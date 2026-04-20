@@ -1,101 +1,125 @@
-// ================= 核心配置 =================
-const ADMIN = { user: "admin", pwd: "admin123" };
+// ================= 配置 =================
+const ADMIN = { user: "MissWu", pwd: "admin1212" };
 const ROOM = { id: "1001", pwd: "room123" };
+
 let currentUser = null;
+let currentProfileUser = null;
+
 let userList = JSON.parse(localStorage.getItem("userList")) || {};
-let gameStatus = { started: false, buzzed: false, winner: "", time: 0, timer: null };
-let recordList = JSON.parse(localStorage.getItem("recordList")) || [];
+let onlineMembers = new Set();
+
+let game = {
+    started: false,
+    buzzed: false,
+    winner: "",
+    time: 0,
+    timer: null
+};
+
+let records = JSON.parse(localStorage.getItem("records")) || [];
 
 // 初始化管理员
-if (!userList.admin) userList.admin = { pwd: "admin123", score: 0, records: [] };
+if (!userList.admin) {
+    userList.admin = { pwd: "admin123", score: 0, records: [] };
+    saveUsers();
+}
 
-// ================= 登录注册 =================
+// ================= 登录/注册 =================
 function login() {
-    const user = document.getElementById("user").value;
-    const pwd = document.getElementById("pwd").value;
-    const roomId = document.getElementById("roomId").value;
-    const roomPwd = document.getElementById("roomPwd").value;
+    const user = document.getElementById("user").value.trim();
+    const pwd = document.getElementById("pwd").value.trim();
+    const roomId = document.getElementById("roomId").value.trim();
+    const roomPwd = document.getElementById("roomPwd").value.trim();
 
     if (roomId !== ROOM.id || roomPwd !== ROOM.pwd) {
-        alert("房间号或密码错误！");
+        alert("房间号或密码错误");
         return;
     }
 
     if (userList[user] && userList[user].pwd === pwd) {
         currentUser = user;
-        switchPage("mainPage");
-        loadUserInfo();
+        onlineMembers.add(user);
+        showPage("mainPage");
+        refreshInfo();
+        refreshMembers();
         refreshHistory();
         document.getElementById("adminPanel").style.display = user === "admin" ? "block" : "none";
-        return;
+    } else {
+        alert("账号或密码错误");
     }
-    alert("账号或密码错误！");
 }
 
 function register() {
-    const user = document.getElementById("user").value;
-    const pwd = document.getElementById("pwd").value;
+    const user = document.getElementById("user").value.trim();
+    const pwd = document.getElementById("pwd").value.trim();
     if (!user || !pwd || user === "admin") {
-        alert("注册失败！");
+        alert("注册无效");
         return;
     }
     if (userList[user]) {
-        alert("用户名已存在！");
+        alert("用户名已存在");
         return;
     }
     userList[user] = { pwd, score: 0, records: [] };
     saveUsers();
-    alert("注册成功！");
+    alert("注册成功！请登录");
+}
+
+// ================= 页面切换 =================
+function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+function backToMain() {
+    showPage("mainPage");
 }
 
 // ================= 游戏功能 =================
 function startGame() {
     if (currentUser !== "admin") return;
-    gameStatus = { started: true, buzzed: false, winner: "", time: 0 };
+    game = { started: true, buzzed: false, winner: "", time: 0 };
     document.getElementById("buzzBtn").disabled = false;
     document.getElementById("result").innerText = "";
-    document.getElementById("status").innerText = "✅ 抢答已开始！";
+    document.getElementById("status").innerText = "✅ 抢答开始！";
     startTimer();
     playSound("start");
 }
 
 function resetGame() {
     if (currentUser !== "admin") return;
-    clearInterval(gameStatus.timer);
-    gameStatus = { started: false, buzzed: false, winner: "", time: 0 };
+    clearInterval(game.timer);
+    game = { started: false, buzzed: false, winner: "", time: 0 };
     document.getElementById("buzzBtn").disabled = true;
-    document.getElementById("timer").innerText = "00:00.000";
+    document.getElementById("timer").innerText = "00.000";
     document.getElementById("status").innerText = "等待管理员开始...";
     document.getElementById("result").innerText = "";
 }
 
-// 抢答按钮
 document.getElementById("buzzBtn").addEventListener("click", () => {
-    if (!gameStatus.started || gameStatus.buzzed) return;
-    gameStatus.buzzed = true;
-    gameStatus.winner = currentUser;
-    clearInterval(gameStatus.timer);
-
-    document.getElementById("result").innerText = `🎉 ${currentUser} 抢到了！`;
+    if (!game.started || game.buzzed) return;
+    game.buzzed = true;
+    game.winner = currentUser;
+    clearInterval(game.timer);
+    document.getElementById("result").innerText = `🎉 ${currentUser} 抢到！`;
     document.getElementById("buzzBtn").disabled = true;
     playSound("buzz");
     saveRecord();
     refreshHistory();
 });
 
-// 计时器
 function startTimer() {
-    clearInterval(gameStatus.timer);
-    gameStatus.time = 0;
-    gameStatus.timer = setInterval(() => {
-        gameStatus.time += 10;
-        const ms = gameStatus.time % 1000;
-        const s = Math.floor(gameStatus.time / 1000) % 60;
-        document.getElementById("timer").innerText = `${s.toString().padStart(2,0)}.${ms.toString().padStart(3,0)}`;
+    clearInterval(game.timer);
+    game.time = 0;
+    game.timer = setInterval(() => {
+        game.time += 10;
+        const s = Math.floor(game.time / 1000);
+        const ms = game.time % 1000;
+        document.getElementById("timer").innerText = `${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     }, 10);
 }
 
-// ================= 分数与记录 =================
+// ================= 分数 & 记录 =================
 function showScoreModal() {
     if (currentUser !== "admin") return;
     const sel = document.getElementById("scoreUser");
@@ -104,7 +128,7 @@ function showScoreModal() {
         if (u === "admin") continue;
         const opt = document.createElement("option");
         opt.value = u;
-        opt.innerText = `${u} (当前：${userList[u].score}分)`;
+        opt.innerText = `${u} (${userList[u].score} 分)`;
         sel.appendChild(opt);
     }
     document.getElementById("scoreModal").style.display = "block";
@@ -115,49 +139,78 @@ function saveScore() {
     const num = parseInt(document.getElementById("addScore").value) || 0;
     userList[user].score += num;
     saveUsers();
-    alert("修改成功！");
+    alert("已保存");
     closeModal();
-    refreshHistory();
+    refreshInfo();
 }
 
 function saveRecord() {
     const rec = {
-        user: gameStatus.winner,
-        time: gameStatus.time,
-        score: 1,
-        timeStr: document.getElementById("timer").innerText
+        user: game.winner,
+        time: game.time,
+        timeStr: document.getElementById("timer").innerText,
+        score: 1
     };
-    recordList.unshift(rec);
-    userList[gameStatus.winner].records.unshift(rec);
-    userList[gameStatus.winner].score += 1;
+    records.unshift(rec);
+    userList[game.winner].records.unshift(rec);
+    userList[game.winner].score += 1;
     saveUsers();
-    localStorage.setItem("recordList", JSON.stringify(recordList));
+    localStorage.setItem("records", JSON.stringify(records));
+}
+
+// ================= 成员 & 资料页 =================
+function refreshMembers() {
+    const box = document.getElementById("memberList");
+    if (currentUser === "admin") {
+        let html = `👥 当前房间成员（${onlineMembers.size}人）：`;
+        onlineMembers.forEach(u => {
+            html += `<span class="member-name" onclick="viewProfile('${u}')">${u}</span> `;
+        });
+        box.innerHTML = html;
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+    }
+}
+
+function viewProfile(user) {
+    currentProfileUser = user;
+    const u = userList[user];
+    document.getElementById("profileInfo").innerHTML = `
+        <h3>${user}</h3>
+        <p>总分：${u.score}</p>
+        <p>抢答次数：${u.records.length}</p>
+    `;
+    let html = "<h4>历史成绩</h4>";
+    u.records.forEach((r, i) => {
+        html += `${i+1}. 用时 ${r.timeStr} <br>`;
+    });
+    document.getElementById("profileRecords").innerHTML = html;
+    showPage("profilePage");
+}
+
+function openMyProfile() {
+    viewProfile(currentUser);
 }
 
 // ================= 工具 =================
-function switchPage(id) {
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
-
-function loadUserInfo() {
+function refreshInfo() {
     document.getElementById("userInfo").innerText = `欢迎：${currentUser} | 总分：${userList[currentUser].score}`;
 }
 
 function refreshHistory() {
-    let html = "<b>📜 抢答记录</b><br>";
-    recordList.forEach((r, i) => {
-        html += `${i+1}. ${r.user} | ${r.timeStr} | +${r.score}分<br>`;
+    let html = "<b>📜 本轮记录</b><br>";
+    records.forEach((r, i) => {
+        html += `${i+1}. ${r.user} | ${r.timeStr}<br>`;
     });
     document.getElementById("history").innerHTML = html;
 }
 
 function playSound(type) {
-    const audio = new Audio(type === "buzz" 
+    const url = type === "buzz"
         ? "https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3"
-        : "https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2576.mp3"
-    );
-    audio.play().catch(e => {});
+        : "https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2576.mp3";
+    new Audio(url).play().catch(() => {});
 }
 
 function closeModal() {
@@ -165,8 +218,9 @@ function closeModal() {
 }
 
 function logout() {
+    onlineMembers.delete(currentUser);
     currentUser = null;
-    switchPage("loginPage");
+    showPage("loginPage");
 }
 
 function saveUsers() {
