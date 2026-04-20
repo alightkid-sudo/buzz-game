@@ -3,19 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线抢答器</title>
+    <title>专业抢答系统</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>📢 在线抢答游戏</h1>
-        <div class="name-box">
-            <input type="text" id="username" placeholder="输入你的名字" required>
+    <!-- 登录界面 -->
+    <div id="loginPage" class="page active">
+        <div class="container">
+            <h2>🔐 登录抢答系统</h2>
+            <input type="text" id="user" placeholder="用户名" class="input-box"><br>
+            <input type="password" id="pwd" placeholder="密码" class="input-box"><br>
+            <input type="text" id="roomId" placeholder="房间号(默认1001)" value="1001" class="input-box"><br>
+            <input type="password" id="roomPwd" placeholder="房间密码" value="room123" class="input-box"><br>
+            <button class="btn" onclick="login()">登录</button>
+            <button class="btn" onclick="register()">注册新账号</button>
         </div>
-        <button id="buzzBtn" class="buzz-btn">👉 点我抢答</button>
-        <div id="result" class="result"></div>
-        <button id="resetBtn" class="reset-btn">🔄 管理员重置</button>
     </div>
+
+    <!-- 主界面 -->
+    <div id="mainPage" class="page">
+        <div class="container">
+            <h2>🎯 专业抢答系统</h2>
+            <div id="userInfo"></div>
+            <div id="status" class="status">等待管理员开始...</div>
+            <div id="timer" class="timer">00:00.000</div>
+
+            <!-- 管理员功能 -->
+            <div id="adminPanel" class="admin-panel">
+                <button class="start-btn" onclick="startGame()">▶️ 管理员开始抢答</button>
+                <button class="reset-btn" onclick="resetGame()">🔄 重置本轮</button>
+                <button class="score-btn" onclick="showScoreModal()">✏️ 修改分数</button>
+            </div>
+
+            <!-- 抢答按钮 -->
+            <button id="buzzBtn" class="buzz-btn" disabled>🚀 点击抢答</button>
+            <div id="result" class="result"></div>
+            <div id="history" class="history"></div>
+
+            <button class="logout-btn" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <!-- 修改分数弹窗 -->
+    <div id="scoreModal" class="modal">
+        <div class="modal-content">
+            <h3>修改分数</h3>
+            <select id="scoreUser"></select>
+            <input type="number" id="addScore" placeholder="输入增减分数" class="input-box"><br>
+            <button onclick="saveScore()">保存</button>
+            <button onclick="closeModal()">关闭</button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
